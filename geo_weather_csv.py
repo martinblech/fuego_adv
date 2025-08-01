@@ -20,7 +20,7 @@ geolocator.geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
 BA_LAT_LON = (-34.6174444, -58.4383458)
 
 
-def geocode(place: dict) -> (float, float):
+def geocode(place: dict) -> tuple[float, float]:
     """Geocode a place."""
     loc = geolocator.geocode(
         f"{place['main_city']}, {place['jurisdiction']}, Argentina"
@@ -328,10 +328,6 @@ def get_wind_data(
     filtered_era5 = era5.filterDate(
         month_start.strftime("%Y-%m-%d"), month_end.strftime("%Y-%m-%d")
     )
-
-    # Get wind components at 10m height (in m/s)
-    u_wind = filtered_era5.select("u_component_of_wind_10m")
-    v_wind = filtered_era5.select("v_component_of_wind_10m")
 
     # Calculate wind speed from u and v components: sqrt(u² + v²)
     # Join the collections and map the calculation

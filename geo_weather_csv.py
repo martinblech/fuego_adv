@@ -98,11 +98,12 @@ def get_precipitation(
     # Get the precipitation value (in mm)
     precip_mm = stats.get("precipitation").getInfo()
 
-    # Return the precipitation value, or raise ValueError if no data
     if precip_mm is None:
-        raise ValueError(
-            f"No precipitation data available for month {month} at coordinates ({latitude}, {longitude})"
+        print(
+            f"WARNING: No precipitation data available for month {month} at coordinates ({latitude}, {longitude})",
+            file=sys.stderr,
         )
+        return None
 
     return float(precip_mm)
 
@@ -179,9 +180,11 @@ def get_rainy_days(
 
     # Return the proportion, or raise ValueError if no data
     if rainy_days_proportion is None:
-        raise ValueError(
-            f"No rainy days data available for month {month} at coordinates ({latitude}, {longitude})"
+        print(
+            f"WARNING: No rainy days data available for month {month} at coordinates ({latitude}, {longitude})",
+            file=sys.stderr,
         )
+        return None
 
     return float(rainy_days_proportion)
 
@@ -258,14 +261,15 @@ def get_temperatures(
 
     # Check if data is available
     if any(temp is None for temp in [p5_temp_c, p50_temp_c, p95_temp_c]):
-        raise ValueError(
-            f"No temperature data available for month {month} at coordinates ({latitude}, {longitude})"
+        print(
+            f"WARNING: No temperature data available for month {month} at coordinates ({latitude}, {longitude})",
+            file=sys.stderr,
         )
 
     return {
-        "p5_temp_c": float(p5_temp_c),
-        "p50_temp_c": float(p50_temp_c),
-        "p95_temp_c": float(p95_temp_c),
+        "p5_temp_c": float(p5_temp_c) if p5_temp_c is not None else None,
+        "p50_temp_c": float(p50_temp_c) if p50_temp_c is not None else None,
+        "p95_temp_c": float(p95_temp_c) if p95_temp_c is not None else None,
     }
 
 
@@ -417,16 +421,27 @@ def get_wind_data(
             wind_gust_days_rate,
         ]
     ):
-        raise ValueError(
-            f"No wind data available for month {month} at coordinates ({latitude}, {longitude})"
+        print(
+            f"WARNING: No wind data available for month {month} at coordinates ({latitude}, {longitude})",
+            file=sys.stderr,
         )
 
     return {
-        "avg_wind_speed_ms": float(avg_wind_speed_ms),
-        "p95_wind_speed_ms": float(p95_wind_speed_ms),
-        "windy_days_rate": float(windy_days_rate),
-        "very_windy_days_rate": float(very_windy_days_rate),
-        "wind_gust_days_rate": float(wind_gust_days_rate),
+        "avg_wind_speed_ms": float(avg_wind_speed_ms)
+        if avg_wind_speed_ms is not None
+        else None,
+        "p95_wind_speed_ms": float(p95_wind_speed_ms)
+        if p95_wind_speed_ms is not None
+        else None,
+        "windy_days_rate": float(windy_days_rate)
+        if windy_days_rate is not None
+        else None,
+        "very_windy_days_rate": float(very_windy_days_rate)
+        if very_windy_days_rate is not None
+        else None,
+        "wind_gust_days_rate": float(wind_gust_days_rate)
+        if wind_gust_days_rate is not None
+        else None,
     }
 
 

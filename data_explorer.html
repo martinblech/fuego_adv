@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Places Data Explorer</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-top: 40px;
+            /* Add space for the floating controls */
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(3px);
+            padding: 15px;
+            border-radius: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            margin-bottom: 25px;
+            z-index: 1000;
+            max-width: 90vw;
+            width: auto;
+            transition: padding 0.3s ease, border-radius 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .controls:not(.expanded) {
+            padding: 8px 12px;
+            border-radius: 20px;
+            width: auto;
+            max-width: 120px;
+            min-width: 80px;
+        }
+
+        .controls.expanded {
+            border-radius: 10px;
+            width: 90vw;
+            max-width: 1200px;
+            right: 20px;
+            left: 20px;
+        }
+
+        .controls:hover {
+            background: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .controls-header h3 {
+            margin: 0;
+            color: #34495e;
+            font-size: 1.1em;
+        }
+
+        .controls:not(.expanded) .controls-header {
+            margin-bottom: 0;
+        }
+
+        .controls:not(.expanded) .controls-header h3 {
+            font-size: 0.75em;
+            margin-right: 4px;
+        }
+
+        .controls-toggle {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background-color 0.2s;
+        }
+
+        .controls:not(.expanded) .controls-toggle {
+            padding: 2px 4px;
+            font-size: 0.65em;
+            min-width: auto;
+        }
+
+        .controls-toggle:hover {
+            background: #2980b9;
+        }
+
+        .controls-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            max-height: 0;
+        }
+
+        .controls-content.expanded {
+            max-height: 80vh;
+            transition: max-height 0.3s ease-in;
+            overflow-y: auto;
+        }
+
+        .controls h3 {
+            margin-bottom: 15px;
+            color: #34495e;
+            font-size: 1.1em;
+        }
+
+        .slider-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .slider-group {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .slider-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #495057;
+            font-size: 0.85em;
+        }
+
+        .slider-container {
+            position: relative;
+            margin: 10px 0;
+        }
+
+        .range-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .range-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .range-values {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .range-slider-container {
+            position: relative;
+            margin: 8px 0;
+            height: 32px;
+        }
+
+        .range-slider-track {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100%;
+            height: 6px;
+            background: #ddd;
+            border-radius: 3px;
+        }
+
+        .range-slider-fill {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 6px;
+            background: #3498db;
+            border-radius: 3px;
+            pointer-events: none;
+        }
+
+        .range-slider-thumb {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3498db;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .range-slider-thumb:hover {
+            background: #2980b9;
+        }
+
+        .range-slider-thumb.active {
+            background: #2980b9;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .range-slider-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .reference-selector {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #bee5eb;
+        }
+
+        .reference-selector label {
+            font-weight: 600;
+            margin-right: 10px;
+            color: #495057;
+            font-size: 0.9em;
+        }
+
+        .reference-selector select {
+            padding: 6px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background: white;
+            color: #495057;
+            font-size: 0.85em;
+        }
+
+        .view-toggle {
+            margin-left: 20px;
+        }
+
+        .view-toggle button {
+            padding: 6px 12px;
+            margin: 0 3px;
+            border: 1px solid #ced4da;
+            background: white;
+            color: #495057;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+
+        .view-toggle button.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .view-toggle button:hover {
+            background: #e9ecef;
+        }
+
+        .view-toggle button.active:hover {
+            background: #2980b9;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            height: 700px;
+        }
+
+        .map-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-wrapper {
+            overflow: auto;
+            flex: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+
+        th,
+        td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        tr.filtered {
+            opacity: 0.3;
+            background: #f8f9fa;
+        }
+
+        tr.selected {
+            background: #e3f2fd !important;
+            border-left: 4px solid #2196f3;
+        }
+
+        tr.highlighted {
+            background: #fff3e0 !important;
+            border-left: 4px solid #ff9800;
+        }
+
+        .stats {
+            padding: 15px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .marker-active {
+            opacity: 1;
+        }
+
+        .marker-filtered {
+            opacity: 0.3;
+        }
+
+        .custom-popup {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .custom-popup .leaflet-popup-content {
+            margin: 15px;
+            line-height: 1.4;
+        }
+
+        .custom-popup .leaflet-popup-content p {
+            margin: 5px 0;
+        }
+
+        .custom-popup .leaflet-popup-content strong {
+            color: #2c3e50;
+        }
+
+        @media (max-width: 1200px) {
+            .content {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .map-container {
+                height: 500px;
+            }
+
+            .table-container {
+                height: 600px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                top: 10px;
+                right: 10px;
+                left: auto;
+                transform: none;
+                max-width: none;
+                width: auto;
+            }
+
+            .controls.expanded {
+                right: 10px;
+                left: 10px;
+                transform: none;
+                width: auto;
+            }
+
+            .container {
+                padding-top: 80px;
+            }
+
+            .slider-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .reference-selector {
+                text-align: center;
+            }
+
+            .reference-selector label,
+            .reference-selector select,
+            .view-toggle {
+                display: block;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Places Data Explorer</h1>
+
+        <div class="controls">
+            <div class="controls-header">
+                <h3>Filters</h3>
+                <button class="controls-toggle" id="toggleControls">▼</button>
+            </div>
+            <div class="controls-content" id="filtersContent">
+                <div class="reference-selector">
+                    <label for="referencePlace">Reference Place:</label>
+                    <select id="referencePlace">
+                        <option value="">Select reference place</option>
+                    </select>
+
+                    <div class="view-toggle">
+                        <button id="absoluteView" class="active">Absolute Values</button>
+                        <button id="relativeView">Relative Values</button>
+                    </div>
+                </div>
+
+                <h3>Filters</h3>
+                <div class="slider-grid" id="sliderContainer">
+                    <!-- Sliders will be generated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+
+            <div class="table-container">
+                <div class="table-wrapper">
+                    <table id="dataTable">
+                        <thead>
+                            <tr id="tableHeader">
+                                <!-- Headers will be generated dynamically -->
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Data will be populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="stats" id="stats">
+                    <!-- Stats will be updated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        class DataExplorer {
+            constructor() {
+                this.data = [];
+                this.filteredData = [];
+                this.map = null;
+                this.markers = [];
+                this.filters = {};
+                this.isRelativeView = false;
+                this.referencePlace = null;
+                this.debounceTimer = null;
+
+                // Columns that should have sliders (numeric, non-coordinate columns)
+                this.sliderColumns = [
+                    'population', 'ba_distance', 'feb_precip_mm', 'feb_rainy_days_rate',
+                    'feb_very_rainy_days_rate', 'feb_p5_temp_c', 'feb_p50_temp_c',
+                    'feb_p95_temp_c', 'feb_avg_wind_speed_ms', 'feb_p95_wind_speed_ms',
+                    'feb_windy_days_rate', 'feb_very_windy_days_rate', 'feb_wind_gust_days_rate'
+                ];
+
+                this.init();
+            }
+
+            async init() {
+                await this.loadData();
+                this.initMap();
+                this.createSliders();
+                this.populateReferenceSelector();
+                this.setupEventListeners();
+                this.renderTable();
+                this.updateStats();
+
+                // Set default reference to Tandil if it exists
+                this.setDefaultReference();
+            }
+
+            async loadData() {
+                try {
+                    const response = await fetch('data/places_augmented.csv');
+                    const csvText = await response.text();
+
+                    const lines = csvText.split('\n').filter(line => line.trim());
+                    const headers = lines[0].split(',');
+
+                    this.data = lines.slice(1).map(line => {
+                        const values = line.split(',');
+                        const row = {};
+                        headers.forEach((header, index) => {
+                            const value = values[index];
+                            // Convert numeric columns to numbers
+                            if (this.sliderColumns.includes(header) || header === 'latitude' || header === 'longitude') {
+                                row[header] = parseFloat(value);
+                            } else {
+                                row[header] = value;
+                            }
+                        });
+                        return row;
+                    });
+
+                    this.filteredData = [...this.data];
+                    console.log(`Loaded ${this.data.length} places`);
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                }
+            }
+
+            initMap() {
+                this.map = L.map('map').setView([-34.6, -58.4], 6);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(this.map);
+
+                this.addMarkersToMap();
+            }
+
+            addMarkersToMap() {
+                this.markers = [];
+
+                this.data.forEach((place, index) => {
+                    if (place.latitude && place.longitude) {
+                        const marker = L.circle([place.latitude, place.longitude], {
+                            radius: 50000, // 50km radius in meters
+                            fillColor: '#3498db',
+                            color: '#2980b9',
+                            weight: 2,
+                            opacity: 0.8,
+                            fillOpacity: 0.6
+                        }).addTo(this.map);
+
+                        // Create comprehensive tooltip content
+                        const tooltipContent = this.createTooltipContent(place);
+                        marker.bindPopup(tooltipContent, {
+                            maxWidth: 400,
+                            className: 'custom-popup'
+                        });
+
+                        // Store place data and index for reference
+                        marker.placeData = place;
+                        marker.placeIndex = index;
+
+                        // Add click handler to highlight corresponding table row
+                        marker.on('click', () => {
+                            this.highlightTableRow(index);
+                        });
+
+                        this.markers.push(marker);
+                    }
+                });
+
+                this.fitMapToActiveMarkers();
+            }
+
+            createSliders() {
+                const container = document.getElementById('sliderContainer');
+
+                this.sliderColumns.forEach(column => {
+                    const values = this.data.map(d => d[column]).filter(v => !isNaN(v));
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
+
+                    this.filters[column] = { min: min, max: max, currentMin: min, currentMax: max };
+
+                    const sliderGroup = document.createElement('div');
+                    sliderGroup.className = 'slider-group';
+
+                    const label = this.formatColumnName(column);
+                    const unit = this.getColumnUnit(column);
+
+                    sliderGroup.innerHTML = `
+                        <label>${label} ${unit ? `(${unit})` : ''}</label>
+                        <div class="range-slider-container" id="${column}_container">
+                            <div class="range-slider-track"></div>
+                            <div class="range-slider-fill" id="${column}_fill"></div>
+                            <div class="range-slider-thumb" id="${column}_min_thumb"></div>
+                            <div class="range-slider-thumb" id="${column}_max_thumb"></div>
+                            <input type="range" class="range-slider-input" id="${column}_min_input"
+                                   min="${min}" max="${max}" value="${min}" step="${this.getStepSize(min, max)}">
+                            <input type="range" class="range-slider-input" id="${column}_max_input"
+                                   min="${min}" max="${max}" value="${max}" step="${this.getStepSize(min, max)}">
+                        </div>
+                        <div class="range-values">
+                            <span id="${column}_min_val">${this.formatValue(min, column)}</span>
+                            <span id="${column}_max_val">${this.formatValue(max, column)}</span>
+                        </div>
+                    `;
+
+                    container.appendChild(sliderGroup);
+
+                    // Initialize the range slider
+                    this.initRangeSlider(column, min, max);
+                });
+            }
+
+            populateReferenceSelector() {
+                const select = document.getElementById('referencePlace');
+
+                // Sort places by name for easier selection
+                const sortedPlaces = [...this.data].sort((a, b) => a.name.localeCompare(b.name));
+
+                sortedPlaces.forEach(place => {
+                    const option = document.createElement('option');
+                    option.value = place.name;
+                    option.textContent = `${place.name} (${place.main_city})`;
+                    select.appendChild(option);
+                });
+            }
+
+            setDefaultReference() {
+                const select = document.getElementById('referencePlace');
+                const tandilOption = Array.from(select.options).find(opt =>
+                    opt.value.toLowerCase().includes('tandil')
+                );
+                if (tandilOption) {
+                    select.value = tandilOption.value;
+                    this.handleReferenceChange();
+                }
+            }
+
+            setupEventListeners() {
+                document.getElementById('referencePlace').addEventListener('change', () => {
+                    this.handleReferenceChange();
+                });
+
+                document.getElementById('absoluteView').addEventListener('click', () => {
+                    this.switchView(false);
+                });
+
+                document.getElementById('relativeView').addEventListener('click', () => {
+                    this.switchView(true);
+                });
+
+                document.getElementById('toggleControls').addEventListener('click', () => {
+                    const filtersContent = document.getElementById('filtersContent');
+                    const controls = document.querySelector('.controls');
+                    filtersContent.classList.toggle('expanded');
+                    controls.classList.toggle('expanded');
+                    const toggleText = filtersContent.classList.contains('expanded') ? '▲' : '▼';
+                    document.getElementById('toggleControls').textContent = toggleText;
+                });
+            }
+
+            handleReferenceChange() {
+                const select = document.getElementById('referencePlace');
+                this.referencePlace = this.data.find(place => place.name === select.value);
+
+                if (this.isRelativeView) {
+                    this.renderTable();
+                }
+            }
+
+            switchView(isRelative) {
+                this.isRelativeView = isRelative;
+
+                document.getElementById('absoluteView').classList.toggle('active', !isRelative);
+                document.getElementById('relativeView').classList.toggle('active', isRelative);
+
+                this.renderTable();
+            }
+
+            applyFilters() {
+                this.filteredData = this.data.filter(place => {
+                    return this.sliderColumns.every(column => {
+                        const value = place[column];
+                        const filter = this.filters[column];
+                        return value >= filter.currentMin && value <= filter.currentMax;
+                    });
+                });
+
+                this.updateMarkersVisibility();
+                this.renderTable();
+                this.updateStats();
+                this.fitMapToActiveMarkers();
+            }
+
+            updateMarkersVisibility() {
+                const activeIndices = new Set(this.filteredData.map(place =>
+                    this.data.findIndex(d => d.name === place.name)
+                ));
+
+                this.markers.forEach((marker, index) => {
+                    if (activeIndices.has(index)) {
+                        // Active markers: blue with normal opacity
+                        marker.setStyle({
+                            fillColor: '#3498db',
+                            color: '#2980b9',
+                            opacity: 0.8,
+                            fillOpacity: 0.6
+                        });
+                    } else {
+                        // Filtered markers: gray with low opacity
+                        marker.setStyle({
+                            fillColor: '#95a5a6',
+                            color: '#7f8c8d',
+                            opacity: 0.3,
+                            fillOpacity: 0.2
+                        });
+                    }
+                });
+            }
+
+            fitMapToActiveMarkers() {
+                const activeMarkers = this.markers.filter((marker, index) => {
+                    const activeIndices = new Set(this.filteredData.map(place =>
+                        this.data.findIndex(d => d.name === place.name)
+                    ));
+                    return activeIndices.has(index);
+                });
+
+                if (activeMarkers.length > 0) {
+                    const group = new L.featureGroup(activeMarkers);
+                    this.map.fitBounds(group.getBounds(), { padding: [20, 20] });
+                }
+            }
+
+            renderTable() {
+                const header = document.getElementById('tableHeader');
+                const body = document.getElementById('tableBody');
+
+                // Clear existing content
+                header.innerHTML = '';
+                body.innerHTML = '';
+
+                if (this.data.length === 0) return;
+
+                // Create headers
+                const headers = Object.keys(this.data[0]);
+                headers.forEach(col => {
+                    const th = document.createElement('th');
+                    th.textContent = this.formatColumnName(col);
+                    header.appendChild(th);
+                });
+
+                // Create rows
+                this.data.forEach((place, index) => {
+                    const tr = document.createElement('tr');
+                    const isFiltered = !this.filteredData.includes(place);
+
+                    if (isFiltered) {
+                        tr.classList.add('filtered');
+                    }
+
+                    // Add click handler to highlight corresponding marker
+                    tr.addEventListener('click', () => {
+                        this.highlightMapMarkerAndShowPopup(index);
+                    });
+
+                    // Add hover effects
+                    tr.addEventListener('mouseenter', () => {
+                        if (!tr.classList.contains('selected')) {
+                            tr.classList.add('highlighted');
+                            this.highlightMapMarker(index, true);
+                        }
+                    });
+
+                    tr.addEventListener('mouseleave', () => {
+                        tr.classList.remove('highlighted');
+                        this.highlightMapMarker(index, false);
+                    });
+
+                    headers.forEach(col => {
+                        const td = document.createElement('td');
+                        let value = place[col];
+
+                        if (this.isRelativeView && this.referencePlace && this.sliderColumns.includes(col)) {
+                            const refValue = this.referencePlace[col];
+                            if (refValue !== 0) {
+                                const relativeValue = ((value - refValue) / refValue) * 100;
+                                td.textContent = `${relativeValue.toFixed(1)}%`;
+                            } else {
+                                td.textContent = 'N/A';
+                            }
+                        } else {
+                            td.textContent = this.formatValue(value, col);
+                        }
+
+                        tr.appendChild(td);
+                    });
+
+                    body.appendChild(tr);
+                });
+            }
+
+            updateStats() {
+                const stats = document.getElementById('stats');
+                const total = this.data.length;
+                const visible = this.filteredData.length;
+                const filtered = total - visible;
+
+                stats.textContent = `Showing ${visible} of ${total} places (${filtered} filtered out)`;
+            }
+
+            formatColumnName(column) {
+                return column
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, l => l.toUpperCase())
+                    .replace(/Feb /g, 'Feb. ')
+                    .replace(/Ba /g, 'BA ')
+                    .replace(/Precip/g, 'Precipitation')
+                    .replace(/Temp/g, 'Temperature')
+                    .replace(/Avg/g, 'Average')
+                    .replace(/P5/g, '5th Percentile')
+                    .replace(/P50/g, 'Median')
+                    .replace(/P95/g, '95th Percentile');
+            }
+
+            getColumnUnit(column) {
+                if (column.includes('temp')) return '°C';
+                if (column.includes('precip') && column.includes('mm')) return 'mm';
+                if (column.includes('wind_speed')) return 'm/s';
+                if (column.includes('distance')) return 'km';
+                if (column.includes('rate') || column.includes('days_rate')) return '';
+                return '';
+            }
+
+            formatValue(value, column) {
+                if (typeof value === 'number') {
+                    if (column === 'population') {
+                        return value.toLocaleString();
+                    } else if (column.includes('rate')) {
+                        return (value * 100).toFixed(2) + '%';
+                    } else if (Number.isInteger(value)) {
+                        return value.toString();
+                    } else {
+                        return value.toFixed(2);
+                    }
+                }
+                return value;
+            }
+
+            getStepSize(min, max) {
+                const range = max - min;
+                if (range > 1000) return 10;
+                if (range > 100) return 1;
+                if (range > 10) return 0.1;
+                return 0.01;
+            }
+
+            initRangeSlider(column, min, max) {
+                const container = document.getElementById(`${column}_container`);
+                const minInput = document.getElementById(`${column}_min_input`);
+                const maxInput = document.getElementById(`${column}_max_input`);
+                const minThumb = document.getElementById(`${column}_min_thumb`);
+                const maxThumb = document.getElementById(`${column}_max_thumb`);
+                const fill = document.getElementById(`${column}_fill`);
+
+                const updateSlider = () => {
+                    const minVal = parseFloat(minInput.value);
+                    const maxVal = parseFloat(maxInput.value);
+                    const range = max - min;
+
+                    // Update thumb positions
+                    const minPercent = ((minVal - min) / range) * 100;
+                    const maxPercent = ((maxVal - min) / range) * 100;
+
+                    minThumb.style.left = `${minPercent}%`;
+                    maxThumb.style.left = `${maxPercent}%`;
+
+                    // Update fill
+                    fill.style.left = `${minPercent}%`;
+                    fill.style.width = `${maxPercent - minPercent}%`;
+
+                    // Update display values
+                    document.getElementById(`${column}_min_val`).textContent = this.formatValue(minVal, column);
+                    document.getElementById(`${column}_max_val`).textContent = this.formatValue(maxVal, column);
+
+                    // Update filter values
+                    this.filters[column].currentMin = minVal;
+                    this.filters[column].currentMax = maxVal;
+                };
+
+                // Initialize positions
+                updateSlider();
+
+                // Add event listeners for input changes
+                minInput.addEventListener('input', () => {
+                    const minVal = parseFloat(minInput.value);
+                    const maxVal = parseFloat(maxInput.value);
+
+                    if (minVal > maxVal) {
+                        minInput.value = maxVal;
+                    }
+                    updateSlider();
+
+                    // Debounce the filtering
+                    clearTimeout(this.debounceTimer);
+                    this.debounceTimer = setTimeout(() => {
+                        this.applyFilters();
+                    }, 150);
+                });
+
+                maxInput.addEventListener('input', () => {
+                    const minVal = parseFloat(minInput.value);
+                    const maxVal = parseFloat(maxInput.value);
+
+                    if (maxVal < minVal) {
+                        maxInput.value = minVal;
+                    }
+                    updateSlider();
+
+                    // Debounce the filtering
+                    clearTimeout(this.debounceTimer);
+                    this.debounceTimer = setTimeout(() => {
+                        this.applyFilters();
+                    }, 150);
+                });
+
+                // Add click handlers for thumbs
+                minThumb.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    minThumb.classList.add('active');
+
+                    const handleMouseMove = (e) => {
+                        const rect = container.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+                        const value = min + (percent / 100) * (max - min);
+                        const step = this.getStepSize(min, max);
+                        const steppedValue = Math.round(value / step) * step;
+
+                        if (steppedValue <= parseFloat(maxInput.value)) {
+                            minInput.value = steppedValue;
+                            updateSlider();
+                        }
+                    };
+
+                    const handleMouseUp = () => {
+                        minThumb.classList.remove('active');
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+
+                        // Apply filters
+                        clearTimeout(this.debounceTimer);
+                        this.debounceTimer = setTimeout(() => {
+                            this.applyFilters();
+                        }, 150);
+                    };
+
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                });
+
+                maxThumb.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    maxThumb.classList.add('active');
+
+                    const handleMouseMove = (e) => {
+                        const rect = container.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+                        const value = min + (percent / 100) * (max - min);
+                        const step = this.getStepSize(min, max);
+                        const steppedValue = Math.round(value / step) * step;
+
+                        if (steppedValue >= parseFloat(minInput.value)) {
+                            maxInput.value = steppedValue;
+                            updateSlider();
+                        }
+                    };
+
+                    const handleMouseUp = () => {
+                        maxThumb.classList.remove('active');
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+
+                        // Apply filters
+                        clearTimeout(this.debounceTimer);
+                        this.debounceTimer = setTimeout(() => {
+                            this.applyFilters();
+                        }, 150);
+                    };
+
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                });
+            }
+
+            createTooltipContent(place) {
+                const content = `
+                    <div style="font-weight: bold; font-size: 1.2em;">${place.name}</div>
+                    <p><strong>Main City:</strong> ${place.main_city}</p>
+                    <p><strong>Jurisdiction:</strong> ${place.jurisdiction}</p>
+                    <p><strong>Population:</strong> ${place.population.toLocaleString()}</p>
+                    <p><strong>Distance from BA:</strong> ${place.ba_distance.toFixed(1)} km</p>
+                    <p><strong>February Precipitation:</strong> ${place.feb_precip_mm.toFixed(1)} mm</p>
+                    <p><strong>February Rainy Days Rate:</strong> ${(place.feb_rainy_days_rate * 100).toFixed(1)}%</p>
+                    <p><strong>February Very Rainy Days Rate:</strong> ${(place.feb_very_rainy_days_rate * 100).toFixed(1)}%</p>
+                    <p><strong>February 5th Percentile Temperature:</strong> ${place.feb_p5_temp_c.toFixed(1)}°C</p>
+                    <p><strong>February Median Temperature:</strong> ${place.feb_p50_temp_c.toFixed(1)}°C</p>
+                    <p><strong>February 95th Percentile Temperature:</strong> ${place.feb_p95_temp_c.toFixed(1)}°C</p>
+                    <p><strong>February Average Wind Speed:</strong> ${place.feb_avg_wind_speed_ms.toFixed(1)} m/s</p>
+                    <p><strong>February 95th Percentile Wind Speed:</strong> ${place.feb_p95_wind_speed_ms.toFixed(1)} m/s</p>
+                    <p><strong>February Windy Days Rate:</strong> ${(place.feb_windy_days_rate * 100).toFixed(1)}%</p>
+                    <p><strong>February Very Windy Days Rate:</strong> ${(place.feb_very_windy_days_rate * 100).toFixed(1)}%</p>
+                    <p><strong>February Wind Gust Days Rate:</strong> ${(place.feb_wind_gust_days_rate * 100).toFixed(1)}%</p>
+                `;
+                return content;
+            }
+
+            highlightTableRow(index) {
+                const tableBody = document.getElementById('tableBody');
+                const rows = tableBody.children;
+
+                // Clear all previous selections and highlights
+                for (let i = 0; i < rows.length; i++) {
+                    rows[i].classList.remove('selected', 'highlighted');
+                }
+
+                // Clear all marker highlights
+                this.markers.forEach(m => {
+                    m.setStyle({
+                        radius: 8, // Use a consistent radius for all markers
+                        fillColor: '#3498db',
+                        color: '#2980b9',
+                        opacity: 0.8,
+                        fillOpacity: 0.6
+                    });
+                });
+
+                const currentRow = rows[index];
+                currentRow.classList.add('selected');
+
+                // Scroll to the selected row
+                currentRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            highlightMapMarker(index, isHighlighted = true) {
+                const marker = this.markers[index];
+                if (marker) {
+                    const isActive = this.filteredData.includes(marker.placeData);
+
+                    if (isHighlighted) {
+                        marker.setRadius(50000); // 50km radius
+                        marker.setStyle({
+                            fillColor: '#ff9800',
+                            color: '#f57c00',
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        });
+                    } else {
+                        // Restore to filtered or active state
+                        marker.setRadius(50000); // 50km radius
+                        if (isActive) {
+                            marker.setStyle({
+                                fillColor: '#3498db',
+                                color: '#2980b9',
+                                opacity: 0.8,
+                                fillOpacity: 0.6
+                            });
+                        } else {
+                            marker.setStyle({
+                                fillColor: '#95a5a6',
+                                color: '#7f8c8d',
+                                opacity: 0.3,
+                                fillOpacity: 0.2
+                            });
+                        }
+                    }
+                }
+            }
+
+            highlightMapMarkerAndShowPopup(index) {
+                const marker = this.markers[index];
+                if (marker) {
+                    // Clear all table row selections and highlights
+                    const tableBody = document.getElementById('tableBody');
+                    const rows = tableBody.children;
+                    for (let i = 0; i < rows.length; i++) {
+                        rows[i].classList.remove('selected', 'highlighted');
+                    }
+
+                    // Reset all markers to their correct filtered/active state using the existing method
+                    this.updateMarkersVisibility();
+
+                    // Highlight the selected marker
+                    marker.setRadius(50000); // 50km radius
+                    marker.setStyle({
+                        fillColor: '#ff9800',
+                        color: '#f57c00',
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    });
+
+                    // Highlight the corresponding table row
+                    if (rows[index]) {
+                        rows[index].classList.add('selected');
+                        rows[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+
+                    // Open the popup
+                    marker.openPopup();
+
+                    // Pan to the marker
+                    this.map.panTo(marker.getLatLng());
+                }
+            }
+        }
+
+        // Initialize the application when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new DataExplorer();
+        });
+    </script>
+</body>
+
+</html>

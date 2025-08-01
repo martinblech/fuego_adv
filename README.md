@@ -25,3 +25,18 @@ The script adds the following columns to each place:
 `$ uv run geo_weather_csv.py`
 
 (pass --help to see options, but defaults should be fine)
+
+## Interactive Data Explorer
+
+To view the interactive HTML data explorer:
+
+1. **Start a local HTTP server** (required to avoid CORS issues):
+
+   ```bash
+   python -m http.server 8000
+   ```
+
+2. **Open your browser** and navigate to:
+   ```
+   http://localhost:8000/data_explorer.html
+   ```
